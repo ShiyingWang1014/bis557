@@ -9,3 +9,4 @@
 ^appveyor\.yml$
 ^codecov\.yml$
 ^codemeta\.json$
+.DS_Store
