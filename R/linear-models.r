@@ -52,7 +52,7 @@ linear_model <- function(formula, data) {
   xlevels<-.getXlevels(terms(formula,data=data),m=mf)
   
   ##call
-  call = match.call(lm,call("lm",formula=formula))
+  call = match.call()
                     
   ##terms
   terms<-terms(formula,data=data)
