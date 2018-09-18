@@ -10,4 +10,3 @@ test_that("The linear_model function works.", {
   expect_is(fit_linear_model, "lm")
   expect_equivalent(fit_lm$coefficients, fit_linear_model$coefficients)
 })
-
