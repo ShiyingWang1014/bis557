@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/kaneplusplus/bis557.svg?branch=master)](https://travis-ci.org/kaneplusplus/bis557)
+[![Build Status](https://travis-ci.org/ShiyingWang1014/bis557.svg?branch=master)](https://travis-ci.org/ShiyingWang1014/bis557)
 
 BIS557
 ===
@@ -7,7 +7,7 @@ This is a repository for storing all code, documentation, and digital
 artifacts for BIS557.
 
 So far the only thing we've done is create and document a function that
-calls `lm`. You can use it like this:
+calls `linear_model`. You can use it like this:
 
 ```{R}
 library(bis557)
