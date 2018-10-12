@@ -1,1 +1,3 @@
 load("/Users/shiyingwang/Desktop/bis557/data/lm_patho.rda")
+load("/Users/shiyingwang/Desktop/bis557/data/ridge_test.rda")
+load("/Users/shiyingwang/Desktop/bis557/data/ridge_train.rda")
