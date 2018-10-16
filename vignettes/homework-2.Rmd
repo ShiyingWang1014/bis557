@@ -10,24 +10,38 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Effect on the out-of-sample mean square error as λ varies in ridge regression
+
+Firstly, we create a predict.ridge function to get predicted values of test_ridge dataset based on the parameters obtained from the ridge regression on train_ridge dataset.
 ```{r }
 library(bis557)
+data(ridge_train)
+data(ridge_test)
 predict.ridge<-function(object,...)
 {
   data<-list(...)[[1]]
   mm<-model.matrix(object$form,data)
   mm %*% object$coefficients
 }
+```
 
-lambda_seq<-seq(0,10,by=0.1)
-MSE<-rep(NA,60)
-for(i in 1:60)
+Then,we use a series of lambda values to fit ridge regression model on ridge_train dataset, and calculate out-of-sample mean square error.
+```{r}
+MSE<-rep(NA,50)
+for(i in 1:50)
 {
 train_fit<-ridge_reg(y~.,i,ridge_train)
 error<-ridge_test$y-predict.ridge(train_fit,ridge_test)
 MSE[i]<-mean(error^2)
 }
+```
+Finally, we draw the plot of MSE as lambda varies.
+```{r}
 plot(MSE)
 ```
+  
+When $0<$lambda$<30$, MSE decreases as lambda increases. When lambda$>30$, MSE increases as lambda increases. MSE reaches its minimum value when lambda is around 30.  
+
+
+In conclusion, there is a certain value of lambda, so that out-of-sample mean square error reaches its minimum.
 
 

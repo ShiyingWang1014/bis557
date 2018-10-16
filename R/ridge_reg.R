@@ -29,7 +29,8 @@ ridge_reg <- function(formula, lambda, data) {
   ridge<-list(coefficients=beta,lambda=lambda,call=match.call(),form=formula)
   class(ridge)<-"ridge_reg"
   ridge
-  }
+ 
+   }
 
  
   
