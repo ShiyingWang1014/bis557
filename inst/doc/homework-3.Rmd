@@ -1,0 +1,142 @@
+---
+title: "Homework-3"
+author: "Shiying Wang"
+date: "11/8/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Page 117, question 7
+```{r}
+##function to calculate Epanechnikov kernel
+epan_kernal <-function(x, h=1){
+    m <- as.numeric( abs(x/h) <= 1)
+    val <- 1/h*(3/4) * ( 1 - (x/h)^2 ) * m
+    return(val)
+}
+
+##function to estimate density
+# x: Numeric vector of values with certain density
+# x_new: A vector of data values at which to estimate density
+# h: The bandwidth of the kernel
+
+kern_density<-function(x,h,x_new){
+  sapply(x_new, function(s){
+    w <- epan_kernal(abs(x - s), h=h)
+    n<-length(x)
+    f <- 1/n*sum(w) 
+    return(f) })
+}
+```
+Example:
+```{r}
+#Simulate data for x and x_test
+set.seed(666)
+x<-c(rnorm(500),rnorm(500,5),rnorm(500,10))
+x_test<-c(rnorm(500),rnorm(500,5),rnorm(500,10))
+
+#The function to calculate the true density of x and x_test 
+mixed_normal_density<-function(x){
+  1/(3*sqrt(2*pi))*exp(-x^2/2)+
+  1/(3*sqrt(2*pi))*exp(-(x-5)^2/2)+
+  1/(3*sqrt(2*pi))*exp(-(x-10)^2/2)
+}
+
+plot(x,mixed_normal_density(x), ylab="density")
+
+##calculate mse for different bandwidths h
+bandwidths <- seq(0.01,5,by=0.01)
+mse <- rep(NA,length(bandwidths))
+test_density<-mixed_normal_density(x_test)
+for (k in 1:length(bandwidths)) {
+  test_density_hat <- kern_density(x=x,h=bandwidths[k],x_new = x_test)
+  mse[k] <- mean((test_density - test_density_hat)^2)
+}
+# test_density_hat1 provides the density estimate with least mse, test_density_hat2 and test_density_hat3 provides two examples of bad estimates
+test_density_hat1 <- kern_density(x=x,h=bandwidths[which.min(mse)],x_new = x_test)
+test_density_hat2 <- kern_density(x=x,h=bandwidths[10],x_new = x_test)
+test_density_hat3 <- kern_density(x=x,h=bandwidths[length(bandwidths)-10],x_new = x_test)
+
+plot(x_test,test_density,ylim=c(0,0.25),main=paste0("h=", bandwidths[which.min(mse)]))
+points(x_test,test_density_hat1,col="green" )
+legend("topright",legend=c("True Density","Estimate Density"),text.col=c("black","green"))
+
+plot(x_test,test_density,ylim=c(0,0.25),main=paste0("h=", bandwidths[10]))
+points(x_test,test_density_hat2,col="red" )
+legend("topright",legend=c("True Density","Estimate Density"),text.col=c("black","red"))
+
+plot(x_test,test_density,ylim=c(0,0.25),main=paste0("h=", bandwidths[length(bandwidths)-10]))
+points(x_test,test_density_hat3,col="blue" )
+legend("topright",legend=c("True Density","Estimate Density"),text.col=c("black","blue"))
+```
+  
+When using the bandwidth with least MSE, the estimate of density is closed to the true density. Using other bandwidths provides bad density estimate.
+
+##Page 200, Question 3-5
+![](question3-5.jpeg)
+
+##Page 200 Question 6
+```{r}
+#Function to check KKT condition.
+# X: A numeric data matrix.
+# y: Response vector.
+# b: Current value of the regression vector.
+# lambda: The next penalty term.
+# Return:A logical vector indicating when using new penalty term, where the KKT conditions have been violated by the variables that are currently zero.
+lasso_reg_with_screening<-function(X, y, b, lambda) {
+    violate <-rep(FALSE,length(b))
+     s<-rep(NA,length(b))
+     for(j in 1:length(b)){
+  #consider numerical imprecision, we use around() to make values that really closed to one equal to one.
+        s[j]<-round(sum(X[,j]*(y-X%*%b))/(lambda*nrow(X)),digits = 2)
+       if(b[j]==0 & abs(s[j])>=1)
+         violate[j]<-TRUE }
+     return(violate)
+}
+```
+Example:
+```{r}
+#Simulate data
+set.seed(666)
+n <- 100L
+p <- 500L
+X <- matrix(rnorm(n * p), ncol = p)
+beta <- c(seq(1, 0.1, length.out=(10L)), rep(0, p - 10L))
+y <- X %*% beta + rnorm(n = n, sd = 0.15)
+
+library(glmnet)
+#we use three three values of lambda to fit lasso<-c(0.15,0.101,0.1)
+lambda1=0.15
+lasso.fit<-glmnet(x=X,y=y,family="gaussian", alpha = 1,intercept=F,lambda=lambda1)
+#the number of non-zero parameter
+sum(lasso.fit$beta!= 0)
+
+lambda2=0.101
+lasso.fit2 <-glmnet(x=X,y=y,family="gaussian", alpha = 1,intercept=F,lambda=lambda2)
+#the number of non-zero parameter
+sum(lasso.fit2$beta!= 0)
+
+lambda3=0.1
+lasso.fit3 <-glmnet(x=X,y=y,family="gaussian", alpha = 1,intercept=F,lambda=lambda3)
+#the number of non-zero parameter
+sum(lasso.fit3$beta!= 0)
+```
+lambda2<lambda1, and lambda2 is not closed to the lambda1. The number of parameter in active set may change.
+```{r}
+#the estimate parameter when using lambda1
+b1<-lasso.fit$beta
+#Find where the KKT conditions are violated when using lambda2
+kkt_violate<-lasso_reg_with_screening(X,y,b1,lambda2)
+sum(kkt_violate)
+```
+lambda3<lambda2, and lambda3 is really closed to the lambda2. The number of parameter in active set may not change.
+```{r}
+#the estimate parameter when using lambda2
+b2<-lasso.fit2$beta
+#Find where the KKT conditions are violated when using lambda2
+kkt_violate<-lasso_reg_with_screening(X,y,b2,lambda3)
+sum(kkt_violate)
+```
