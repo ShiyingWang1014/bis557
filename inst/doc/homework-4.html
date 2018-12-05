@@ -197,10 +197,10 @@ beta_glm &lt;- coef(glm(y ~ X[,-1], family = &quot;poisson&quot;))
 coef&lt;-cbind(beta,as.numeric(beta_glm), beta_hat1,beta_hat2 )
 colnames(coef)&lt;-c(&quot;true beta&quot;,&quot;glm&quot;,&quot;glm_irwls,lambda=0&quot;,&quot;glm_irwls,lambda=2&quot;)
 coef</code></pre>
-<pre><code>##      true beta        glm glm_irwls,lambda=0 glm_irwls,lambda=2
-## [1,]      -1.0 -0.9862380         -0.9862380         -0.9746570
-## [2,]       0.2  0.1851409          0.1851409          0.1813737
-## [3,]       0.1  0.1890188          0.1890188          0.1845547</code></pre>
+<pre><code>##      true beta         glm glm_irwls,lambda=0 glm_irwls,lambda=2
+## [1,]      -1.0 -1.00319751        -1.00319752        -0.99175749
+## [2,]       0.2  0.24443393         0.24443394         0.24050693
+## [3,]       0.1  0.05329701         0.05329701         0.05181083</code></pre>
 <pre class="r"><code>#Gaussian
 n &lt;- 500
 p &lt;- 3
@@ -214,10 +214,10 @@ beta_glm &lt;- coef(glm(y ~ X[,-1], family = &quot;gaussian&quot;))
 coef&lt;-cbind(beta,as.numeric(beta_glm), beta_hat1,beta_hat2)
 colnames(coef)&lt;-c(&quot;true beta&quot;,&quot;glm&quot;,&quot;glm_irwls,lambda=0&quot;,&quot;glm_irwls,lambda=2&quot;)
 coef</code></pre>
-<pre><code>##      true beta         glm glm_irwls,lambda=0 glm_irwls,lambda=2
-## [1,]      -1.0 -0.98599034        -0.98599034        -0.98218827
-## [2,]       3.0  3.05081458         3.05081458         3.03767954
-## [3,]       0.1  0.01560512         0.01560512         0.01645199</code></pre>
+<pre><code>##      true beta        glm glm_irwls,lambda=0 glm_irwls,lambda=2
+## [1,]      -1.0 -1.0067196         -1.0067196         -1.0028614
+## [2,]       3.0  3.0485886          3.0485886          3.0352256
+## [3,]       0.1  0.1488091          0.1488091          0.1476934</code></pre>
 <p>In both cases of poission and gaussian, we can see that when lambda=0, the coefficients calculated by glm_irwls are same as results of glm. When lambda=2, the coefficients calculated by glm_irwls shrink towards 0.</p>
 </div>
 <div id="question-3" class="section level2">
