@@ -2,18 +2,10 @@
 % Please edit documentation in R/sparse.matrix.R
 \name{\%*\%.default}
 \alias{\%*\%.default}
-\title{Use for multipling two "sparse.matrix" objects}
+\title{Use for matrix multiple}
 \usage{
 \method{\%*\%}{default}()
 }
-\arguments{
-\item{a}{A "sparse.matrix object"}
-
-\item{b}{A "sparse.matrix object"}
-}
-\value{
-A "sparse.matrix" object
-}
 \description{
-This function is used for multipling two "sparse.matrix" objects
+This function is used for matrix multiple
 }

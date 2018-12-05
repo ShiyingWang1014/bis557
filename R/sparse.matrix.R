@@ -59,7 +59,24 @@ sparse.matrix<-function(i,j,x,dims=c(max(i),max(j)))
   return(m)
 }
 
+#' Use for matrix multiple
+#'
+#' @description This function is used for matrix multiple
+#' @export
+#' 
+'%*%.default' = .Primitive("%*%")
 
+#' Use for matrix multiple based on the class of matrix
+#'
+#' @description This function is used for matrix multiple
+#' @param x A certain class matrix or vector object
+#' @param y A certain class matrix or vector object
+#' @return A certain class matrix or vector object
+#' @export
+#' 
+'%*%'<-function(x,y){
+  UseMethod("%*%",x)
+}
 
 #' Use for multipling two "sparse.matrix" objects
 #'
@@ -69,11 +86,6 @@ sparse.matrix<-function(i,j,x,dims=c(max(i),max(j)))
 #' @return A "sparse.matrix" object
 #' @export
 #' 
-
-'%*%.default' = .Primitive("%*%")
-'%*%'<-function(x,y){
-  UseMethod("%*%",x)
-}
 '%*%.sparse.matrix'<-function(a,b)
 {
   if(!inherits(b,"sparse.matrix") )
