@@ -18,7 +18,7 @@ A "sparse.matrix" object
 This function is used for adding two "sparse.matrix" objects
 }
 \examples{
-sm0 <- sparse.matrix(i = c(1, 2), j = c(1, 1), x = c(1, 1))
-sm1 <- sparse.matrix(i = c(1, 2), j = c(1, 1), x = c(3, 1), dims = c(3, 2))
+sm0 <- sparse.matrix(i = c(1, 2), j = c(1, 1), x = c(2, 1),dims=c(2,3))
+sm1 <- sparse.matrix(i = c(1, 2, 2), j = c(1, 1, 2), x = c(4.4, 1.2, 3),dims = c(2, 3))
 sm0+sm1
 }
