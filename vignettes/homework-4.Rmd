@@ -1,0 +1,99 @@
+---
+title: "Homework-4"
+author: "Shiying Wang"
+date: "12/4/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Question 2
+Linear Hessian matrix $X^TX$,
+Logistic Hessian matrix $X^Tdiag(p(1-p))X$.
+In order to make $X^TX$ well-conditioned, we set the column vectors of X independent from each other, so we choose an orthogonal matrix as X.
+```{r}
+a<-matrix(1:18,ncol=3)
+#suppose X is an orthogonal matrix
+X<-qr.Q(qr(a))
+X
+#calculate condition number of X'X using SVD
+b<-crossprod(X)
+c<-svd(b)
+d<-max(c$d)/min(c$d)
+d
+```
+The condition number of $X^TX$ is 1, so it is well-conditioned.  
+Let p have great variance, and then calculate the condition number of Logistic Hessian.  
+```{r}
+p<-c(0.5,0.0001,0.9999,0.5,0.0001,0.9999)
+e<-crossprod(X,diag(p*(1-p))%*%X)
+f<-svd(e)
+g<-max(f$d)/min(f$d)
+g
+```
+The condition number of $X^Tdiag(p(1-p))X$ is 1703.3, so it is ill-conditioned.   
+
+##Question 4
+Add a $l_2$-norm penalty on the regression vector in irwls_glm function.
+```{r}
+glm_irwls <-
+  function(X, y, family, maxit=25, tol=1e-10,lambda=0)
+  {
+    beta <- rep(0,ncol(X))
+    for(j in seq_len(maxit))
+    {
+      b_old <- beta
+      eta <- X %*% beta
+      mu <- family$linkinv(eta)
+      mu_p <- family$mu.eta(eta)
+      z <- eta + (y - mu) / mu_p
+      W <- as.numeric(mu_p^2 / family$variance(mu))
+      XtX <- crossprod(X, diag(W) %*% X)
+      ## Add a l2-norm penalty
+      Penalty<-diag(lambda,dim(XtX)[1])
+      Xtz <- crossprod(X, W * z)
+      beta <- solve((XtX+Penalty), Xtz)
+      if(sqrt(crossprod(beta - b_old)) < tol) break
+    }
+    beta }
+```
+Now, we simulate data to test it's function.
+```{r}
+#Poisson
+n <- 500
+p <- 3
+beta <- c(-1, 0.2, 0.1)
+X <- cbind(1, matrix(rnorm(n * (p- 1)), ncol = p - 1))
+eta <- X %*% beta
+lambda <- exp(eta)
+y <- rpois(n, lambda = lambda)
+
+beta_hat1 <- glm_irwls(X, y,family = poisson(link="log"),lambda=0)
+beta_hat2 <- glm_irwls(X, y,family = poisson(link="log"),lambda=2)
+beta_glm <- coef(glm(y ~ X[,-1], family = "poisson"))
+coef<-cbind(beta,as.numeric(beta_glm), beta_hat1,beta_hat2 )
+colnames(coef)<-c("true beta","glm","glm_irwls,lambda=0","glm_irwls,lambda=2")
+coef
+```
+
+```{r}
+#Gaussian
+n <- 500
+p <- 3
+beta <- c(-1, 3, 0.1)
+X <- cbind(1, matrix(rnorm(n * (p- 1)), ncol = p - 1))
+y <- X %*% beta+rnorm(n)
+
+beta_hat1 <- glm_irwls(X, y,family = gaussian(link="identity"),lambda=0)
+beta_hat2 <- glm_irwls(X, y,family = gaussian(link="identity"),lambda=2)
+beta_glm <- coef(glm(y ~ X[,-1], family = "gaussian"))
+coef<-cbind(beta,as.numeric(beta_glm), beta_hat1,beta_hat2)
+colnames(coef)<-c("true beta","glm","glm_irwls,lambda=0","glm_irwls,lambda=2")
+coef
+```
+In both cases of poission and gaussian, we can see that when lambda=0, the coefficients calculated by glm_irwls are same as results of glm. When lambda=2, the coefficients calculated by glm_irwls shrink towards 0. 
+
+##Question 3
+Please see the functions and descriptions in sparse.matrix.R file.
