@@ -67,10 +67,6 @@ sparse.matrix<-function(i,j,x,dims=c(max(i),max(j)))
 #' @param a A "sparse.matrix object"
 #' @param b A "sparse.matrix object"
 #' @return A "sparse.matrix" object
-#' @examples
-#' sm0 <- sparse.matrix(i = c(1, 2), j = c(1, 1), x = c(1, 1),dims=c(2,3))
-#' sm1 <- sparse.matrix(i = c(1, 2), j = c(1, 1), x = c(3, 1), dims = c(3, 2))
-#' sm0 %*% sm1
 #' @export
 #' 
 
