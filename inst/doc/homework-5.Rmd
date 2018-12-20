@@ -30,18 +30,12 @@ y_test <- factor(y_test)
 s <- sample(seq_along(y_train), 1000)
 fit <- cv.glmnet(x_train[s,], y_train[s], family = "multinomial")
 
-#calculate in-sample prediction accuracy
-preds_in <- predict(fit$glmnet.fit, x_train[s,], s = fit$lambda.min, 
-                 type = "class")
-
 #calculate out-of-sample prediction accuracy
 preds_out <- predict(fit$glmnet.fit, x_test, s = fit$lambda.min, 
                  type = "class")
+t <- table(as.vector(preds_out), y_test)
+sum(diag(t)) / sum(t)
 
-t1 <- table(as.vector(preds_in), y_train[s])
-t2 <- table(as.vector(preds_out), y_test)
-sum(diag(t1)) / sum(t1)
-sum(diag(t2)) / sum(t2)
 ```
 The out-of-sample accuracy rate is 0.8526.  
 
@@ -53,22 +47,27 @@ library(keras)
 batch_size <- 128
 num_classes <- 10
 epochs <- 2
+
 # Input image dimensions
 img_rows <- 28
 img_cols <- 28
+
 # The data, shuffled and split between train and test sets
 mnist <- dataset_mnist()
 x_train <- mnist$train$x
 y_train <- mnist$train$y
 x_test <- mnist$test$x
 y_test <- mnist$test$y
+
 # Redefine  dimension of train/test inputs
 x_train <- array_reshape(x_train, c(nrow(x_train), img_rows, img_cols, 1))
 x_test <- array_reshape(x_test, c(nrow(x_test), img_rows, img_cols, 1))
 input_shape <- c(img_rows, img_cols, 1)
+
 # Transform RGB values into [0,1] range
 x_train <- x_train / 255
 x_test <- x_test / 255
+
 cat('x_train_shape:', dim(x_train), '\n')
 cat(nrow(x_train), 'train samples\n')
 cat(nrow(x_test), 'test samples\n')
@@ -108,14 +107,10 @@ model %>% fit(
   validation_split = 0.2
 )
 
-scores_trian <- model %>% evaluate(
-  x_train, y_train, verbose = 0
-)
-scores_test <- model %>% evaluate(
+scores <- model %>% evaluate(
   x_test, y_test, verbose = 0
 )
-scores_train
-scores_test
+scores
 ```
 The out-of-sample accuracy rate is 0.9857.  
 Neural network method achieves much higher out-of-sample prediction accuracy rate. Neural network method extracts more features from imaging data. Only using a part of sample for LASSO method also partially explain this result. 
@@ -154,7 +149,7 @@ Define model:
 The neural network model includes 4 convolutional layers, 2 pooling layers and 3 fully connected layers.  
 
 # Model 1 
-For each convolution layer, filters=32, kernal size=c(2,2), and for each dense layer, units=128.
+For each convolution layer, filters=32, kernal size=c(2,2), and for each fully connected layer, units=128.
 ```{r, eval=FALSE}
 model<- keras_model_sequential()
 model %>%
@@ -205,7 +200,7 @@ scores_train
 ```
 # Model 2 
 Set a different kernal size for convolution layers from model 1.  
-For each convolution layer, filters=32, kernal size=c(3,3), and for each dense layer, units=128.
+For each convolution layer, filters=32, kernal size=c(3,3), and for each fully connected layer, units=128.
 ```{r, eval=FALSE}
 model <- keras_model_sequential()
 model %>%
@@ -308,7 +303,7 @@ scores3_train
 
 # Model 4 
 Set a different unitA number for dense layers from model 1.  
-For each convolution layer, filters=32, kernal size=c(2,2), and for each dense layer, units=256.
+For each convolution layer, filters=32, kernal size=c(2,2), and for each fully connected layer, units=256.
 ```{r, eval=FALSE}
 model<- keras_model_sequential()
 model %>%
@@ -368,7 +363,7 @@ colnames(rr)<-c("train accuracy","test accuracy")
 rownames(rr)<-c("Model 1","Model 2","Model 3","Model 4")
 rr
 ```
-Increasing the kernal size, filters number in convolution layers and units number in dense layers can increase the training and testing accuracy rate.  
+Increasing the kernal size, filters number in convolution layers and units number in fully connected layers can increase the training and testing accuracy rate.  
 
 ## Question 3 
 ```{r}
@@ -380,8 +375,7 @@ Increasing the kernal size, filters number in convolution layers and units numbe
 #
 # Returns:
 #     A list containing initialized weights and biases.
-casl_nn_make_weights <-
-function(sizes)
+casl_nn_make_weights <-function(sizes)
 {
   L <- length(sizes) - 1L
   weights <- vector("list", L)
@@ -401,8 +395,7 @@ function(sizes)
 #     v: A numeric vector or matrix.
 #
 # Returns:#     The original input with negative values truncated to zero.
-casl_util_ReLU <-
-  function(v)
+casl_util_ReLU <-function(v)
   {
     v[v < 0] <- 0
     v }
@@ -414,8 +407,7 @@ casl_util_ReLU <-
 #
 # Returns:
 #     Sets positive values to 1 and negative values to zero.
-casl_util_ReLU_p <-
-  function(v)
+casl_util_ReLU_p <- function(v)
   {
     p <- v * 0
     p[v > 0] <- 1
@@ -433,8 +425,7 @@ Derivative of two kinds of loss function: MAD and MSE
 #
 # Returns:
 #     Returned current derivative the MAD function.
-casl_util_mad_p <-
-  function(y, a)
+casl_util_mad_p <-function(y, a)
   { if (y>a)  -1 
     else 1
      }
@@ -446,8 +437,7 @@ casl_util_mad_p <-
 #
 # Returns:
 #     Returned current derivative the MSE function.
-casl_util_mse_p <-
-  function(y, a)
+casl_util_mse_p <-function(y, a)
   {
     (a - y) }
 
@@ -465,8 +455,7 @@ casl_util_mse_p <-
 # Returns:
 #     A list containing the new weighted responses (z) and
 #     activations (a).
-casl_nn_forward_prop <-
-  function(x, weights, sigma)
+casl_nn_forward_prop <-function(x, weights, sigma)
   {
     L <- length(weights)
     z <- vector("list", L)
@@ -493,8 +482,7 @@ casl_nn_forward_prop <-
 # Returns:
 #     A list containing the new weighted responses (z) and
 #     activations (a).
-casl_nn_backward_prop <-
-  function(x, y, weights, f_obj, sigma_p, f_p)
+casl_nn_backward_prop <-function(x, y, weights, f_obj, sigma_p, f_p)
   {
     z <- f_obj$z; a <- f_obj$a
     L <- length(weights)
@@ -517,7 +505,7 @@ casl_nn_backward_prop <-
 
 Two kinds of SGD functions:
 ```{r}
-# Apply stochastic gradient descent (SGD) to estimate NN
+# Apply stochastic gradient descent (SGD) to estimate NN using MSE as loss function.
 #
 # Args:
 #     X: A numeric data matrix.
@@ -530,60 +518,66 @@ Two kinds of SGD functions:
 #
 # Returns:
 #     A list containing the trained weights for the network.
-
-casl_nn_sgd_mse <-
-  function(X, y, sizes, epochs, eta, weights=NULL)
+casl_nn_sgd_mse <-function(X, y, sizes, epochs, eta, weights=NULL)
+{if (is.null(weights))
+{
+  weights <- casl_nn_make_weights(sizes)
+}
+for (epoch in seq_len(epochs))
+{
+  for (i in seq_len(nrow(X)))
   {
-    if (is.null(weights))
-    {
-      weights <- casl_nn_make_weights(sizes)
-    }
-    for (epoch in seq_len(epochs))
-    {
-      for (i in seq_len(nrow(X)))
-      {
-        f_obj <- casl_nn_forward_prop(X[i,], weights,
-                                      casl_util_ReLU)
-        b_obj <- casl_nn_backward_prop(X[i,], y[i,], weights,
-                                       f_obj, casl_util_ReLU_p,
-                                       casl_util_mse_p)
-        for (j in seq_along(b_obj))
-        {
-          weights[[j]]$b <- weights[[j]]$b -
-            eta * b_obj$grad_z[[j]]
-          weights[[j]]$w <- weights[[j]]$w -
-            eta * b_obj$grad_w[[j]]
-        }
-      } }
-    weights 
-    }
+    f_obj <- casl_nn_forward_prop(X[i,], weights,
+casl_util_ReLU)
+b_obj <- casl_nn_backward_prop(X[i,], y[i,], weights,
+f_obj, casl_util_ReLU_p,
+casl_util_mse_p)
+for (j in seq_along(b_obj))
+{
+  weights[[j]]$b <- weights[[j]]$b -
+                      eta * b_obj$grad_z[[j]]
+  weights[[j]]$w <- weights[[j]]$w -
+eta * b_obj$grad_w[[j]]
+}
+} }
+weights }
 
-casl_nn_sgd_mad <-
-  function(X, y, sizes, epochs, eta, weights=NULL)
+# Apply stochastic gradient descent (SGD) to estimate NN using MAD as loss function.
+#
+# Args:
+#     X: A numeric data matrix.
+#     y: A numeric vector of responses.
+#     sizes: A numeric vector giving the sizes of layers in
+#            the neural network.
+#     epochs: Integer number of epochs to computer.
+#     eta: Positive numeric learning rate.
+#     weights: Optional list of starting weights.
+#
+# Returns:
+#     A list containing the trained weights for the network.
+casl_nn_sgd_mad <-function(X, y, sizes, epochs, eta, weights=NULL)
+{if (is.null(weights))
+{
+  weights <- casl_nn_make_weights(sizes)
+}
+for (epoch in seq_len(epochs))
+{
+  for (i in seq_len(nrow(X)))
   {
-    if (is.null(weights))
-    {
-      weights <- casl_nn_make_weights(sizes)
-    }
-    for (epoch in seq_len(epochs))
-    {
-      for (i in seq_len(nrow(X)))
-      {
-        f_obj <- casl_nn_forward_prop(X[i,], weights,
-                                      casl_util_ReLU)
-        b_obj <- casl_nn_backward_prop(X[i,], y[i,], weights,
-                                       f_obj, casl_util_ReLU_p,
-                                       casl_util_mad_p)
-        for (j in seq_along(b_obj))
-        {
-          weights[[j]]$b <- weights[[j]]$b -
-            eta * b_obj$grad_z[[j]]
-          weights[[j]]$w <- weights[[j]]$w -
-            eta * b_obj$grad_w[[j]]
-        }
-      } }
-    weights 
-    }
+    f_obj <- casl_nn_forward_prop(X[i,], weights,
+casl_util_ReLU)
+b_obj <- casl_nn_backward_prop(X[i,], y[i,], weights,
+f_obj, casl_util_ReLU_p,
+casl_util_mad_p)
+for (j in seq_along(b_obj))
+{
+  weights[[j]]$b <- weights[[j]]$b -
+                      eta * b_obj$grad_z[[j]]
+  weights[[j]]$w <- weights[[j]]$w -
+eta * b_obj$grad_w[[j]]
+}
+} }
+weights }
 
 # Predict values from a training neural network.
 #
@@ -593,8 +587,7 @@ casl_nn_sgd_mad <-
 #
 # Returns:
 #     A matrix of predicted values.
-casl_nn_predict <-
-  function(weights, X_test)
+casl_nn_predict <-function(weights, X_test)
   {
     p <- length(weights[[length(weights)]]$b)
     y_hat <- matrix(0, ncol = p, nrow = nrow(X_test))
@@ -607,7 +600,7 @@ casl_nn_predict <-
     y_hat }
 ```
 Data simulation:
-```{r,eval=FALSE}
+```{r}
 set.seed(666)
 # without outliers
 X <- matrix(runif(500, min=-1, max=1), ncol=1)
@@ -616,26 +609,27 @@ weights1<-casl_nn_sgd_mse(X, y, sizes=c(1, 25, 1), epochs=25, eta=0.01)
 weights2<-casl_nn_sgd_mad(X, y, sizes=c(1, 25, 1),epochs=25, eta=0.01)
 y_pred_mse <- casl_nn_predict(weights1, X)
 y_pred_mad <- casl_nn_predict(weights2, X)
-plot(X,y, pch=20,ylim=c(-2,4), main="without outliers")
+plot(X,y, pch=20,ylim=c(1,4), main="without outliers")
 points(X,y_pred_mse,col="red",pch=20)
 points(X,y_pred_mad,col="blue",pch=20)
-legend()
+legend("topright",legend=c("mse","mad"),lty=1,col=c("red","blue"))
 ```
 
-```{r,eval=FALSE}
+```{r}
 # with outliers
-
+set.seed(666)
 X <- matrix(runif(500, min=-1, max=1), ncol=1)
 y <- 2+X[,1,drop = FALSE]^2 + rnorm(500, sd = 0.1)
 y[sample(1:500, 10)]<- rnorm(10, sd = 1)
-weights1 <- casl_nn_sgd_mse(X, y, sizes=c(1, 25, 1),
-                       epochs=25, eta=0.01)
-weights2 <- casl_nn_sgd_mad(X, y, sizes=c(1, 25, 1),
-                            epochs=25, eta=0.01)
+weights1 <- casl_nn_sgd_mse(X, y, sizes=c(1, 25, 1),epochs=25, eta=0.01)
+weights2 <- casl_nn_sgd_mad(X, y, sizes=c(1, 25, 1),epochs=25, eta=0.01)
 y_pred_mse <- casl_nn_predict(weights1, X)
 y_pred_mad <- casl_nn_predict(weights2, X)
 
-plot(X,y, pch=20,ylim=c(-2,4))
+plot(X,y, pch=20,ylim=c(-2,4),main="with outliers")
 points(X,y_pred_mse,col="red",pch=20)
 points(X,y_pred_mad,col="blue",pch=20)
+legend("bottomright",legend=c("mse","mad"),lty=1,col=c("red","blue"))
 ```
+  
+When there is no outlier in data, using MSE and MAD as loss functions both provide good estimates. When there are outliers in data, using MAD as loss function still preforms well, while using MSE as loss function does not provide a good estimate. Therefore, the SDG function using MAD as loss function is robust.
