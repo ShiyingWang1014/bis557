@@ -1,0 +1,641 @@
+---
+title: "Homework-5"
+author: "Shiying Wang"
+date: "12/16/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##  Question 1 
+Firstly, we use LASSO to predict hand-writing characters in MNIST dataset.  
+```{r, eval=FALSE}
+library(glmnet)
+
+#data preparation
+mnist <- dataset_mnist()
+x_train <- mnist$train$x
+y_train <- mnist$train$y
+x_test <- mnist$test$x
+y_test <- mnist$test$y
+
+x_train <- array_reshape(x_train, c(60000, 28^2))
+x_test <- array_reshape(x_test, c(10000, 28^2))
+y_train <- factor(y_train)
+y_test <- factor(y_test)
+
+# we only randomly select 1000 samples to fit model, or it will take too much time
+s <- sample(seq_along(y_train), 1000)
+fit <- cv.glmnet(x_train[s,], y_train[s], family = "multinomial")
+
+#calculate in-sample prediction accuracy
+preds_in <- predict(fit$glmnet.fit, x_train[s,], s = fit$lambda.min, 
+                 type = "class")
+
+#calculate out-of-sample prediction accuracy
+preds_out <- predict(fit$glmnet.fit, x_test, s = fit$lambda.min, 
+                 type = "class")
+
+t1 <- table(as.vector(preds_in), y_train[s])
+t2 <- table(as.vector(preds_out), y_test)
+sum(diag(t1)) / sum(t1)
+sum(diag(t2)) / sum(t2)
+```
+The out-of-sample accuracy rate is 0.8526.  
+
+Then, we use neural network to predict hand-writing characters in MNIST dataset. The neural network model includes 2 convolutional layers, 1 pooling layer and 2 fully connected layers.
+
+```{r, eval=FALSE}
+library(keras)
+# Data Preparation 
+batch_size <- 128
+num_classes <- 10
+epochs <- 2
+# Input image dimensions
+img_rows <- 28
+img_cols <- 28
+# The data, shuffled and split between train and test sets
+mnist <- dataset_mnist()
+x_train <- mnist$train$x
+y_train <- mnist$train$y
+x_test <- mnist$test$x
+y_test <- mnist$test$y
+# Redefine  dimension of train/test inputs
+x_train <- array_reshape(x_train, c(nrow(x_train), img_rows, img_cols, 1))
+x_test <- array_reshape(x_test, c(nrow(x_test), img_rows, img_cols, 1))
+input_shape <- c(img_rows, img_cols, 1)
+# Transform RGB values into [0,1] range
+x_train <- x_train / 255
+x_test <- x_test / 255
+cat('x_train_shape:', dim(x_train), '\n')
+cat(nrow(x_train), 'train samples\n')
+cat(nrow(x_test), 'test samples\n')
+
+# Convert class vectors to binary class matrices
+y_train <- to_categorical(y_train, num_classes)
+y_test <- to_categorical(y_test, num_classes)
+
+# Define Model ----------------------------------------------------------
+
+# Define model
+model <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu',
+                input_shape = input_shape) %>% 
+  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+  
+  layer_dropout(rate = 0.25) %>% 
+  layer_flatten() %>% 
+  layer_dense(units = 128, activation = 'relu') %>% 
+  layer_dense(units = 128, activation = 'relu') %>% 
+  layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = num_classes, activation = 'softmax')
+
+# Compile model
+model %>% compile(
+  loss = loss_categorical_crossentropy,
+  optimizer = optimizer_adadelta(),
+  metrics = c('accuracy')
+)
+
+# Train model
+model %>% fit(
+  x_train, y_train,
+  batch_size = batch_size,
+  epochs = epochs,
+  validation_split = 0.2
+)
+
+scores_trian <- model %>% evaluate(
+  x_train, y_train, verbose = 0
+)
+scores_test <- model %>% evaluate(
+  x_test, y_test, verbose = 0
+)
+scores_train
+scores_test
+```
+The out-of-sample accuracy rate is 0.9857.  
+Neural network method achieves much higher out-of-sample prediction accuracy rate. Neural network method extracts more features from imaging data. Only using a part of sample for LASSO method also partially explain this result. 
+
+## Question 2
+Load the EMNIST letters dataset into R.
+Data Preparation:
+```{r, eval=FALSE}
+x_train <- emnist$train$x
+y_train <-emnist$train$y
+x_test <- emnist$test$x
+y_test <- emnist$test$y
+batch_size <- 128
+num_classes <- 26
+epochs <- 2
+# Input image dimensions
+img_rows <- 28
+img_cols <- 28
+
+x_train <- array_reshape(x_train, c(nrow(x_train), img_rows, img_cols, 1))
+x_test <- array_reshape(x_test, c(nrow(x_test), img_rows, img_cols, 1))
+input_shape <- c(img_rows, img_cols, 1)
+
+# Transform RGB values into [0,1] range
+x_train <- x_train / 255
+x_test <- x_test / 255
+cat('x_train_shape:', dim(x_train), '\n')
+cat(nrow(x_train), 'train samples\n')
+cat(nrow(x_test), 'test samples\n')
+
+# Convert class vectors to binary class matrices
+y_train <- to_categorical(y_train-1, num_classes)
+y_test <- to_categorical(y_test-1, num_classes)
+```
+Define model:  
+The neural network model includes 4 convolutional layers, 2 pooling layers and 3 fully connected layers.  
+
+# Model 1 
+For each convolution layer, filters=32, kernal size=c(2,2), and for each dense layer, units=128.
+```{r, eval=FALSE}
+model<- keras_model_sequential()
+model %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                input_shape = c(28, 28, 1),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_flatten() %>%
+  layer_dense(units = 128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dense(units = 128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 26) %>%
+  layer_activation(activation = "softmax")
+
+model %>% compile(loss = 'categorical_crossentropy',
+                  optimizer = optimizer_rmsprop(),
+                  metrics = c('accuracy'))
+
+history <- model %>%
+  fit(x_train, y_train, epochs = 2,
+      batch_size = batch_size,
+      validation_split = 0.2)
+
+scores_train <- model %>% evaluate(
+  x_train, y_train, verbose = 0
+)
+scores_test <- model %>% evaluate(
+  x_test, y_test, verbose = 0
+)
+scores_test
+scores_train
+
+```
+# Model 2 
+Set a different kernal size for convolution layers from model 1.  
+For each convolution layer, filters=32, kernal size=c(3,3), and for each dense layer, units=128.
+```{r, eval=FALSE}
+model <- keras_model_sequential()
+model %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),
+                input_shape = c(28, 28, 1),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3,3),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_flatten() %>%
+  layer_dense(units = 128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dense(units = 128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 26) %>%
+  layer_activation(activation = "softmax")
+
+model %>% compile(loss = 'categorical_crossentropy',
+                  optimizer = optimizer_rmsprop(),
+                  metrics = c('accuracy'))
+
+history2 <- model %>%
+  fit(x_train, y_train, epochs = 2,
+      batch_size = batch_size,
+      validation_split = 0.2)
+
+scores2_train <- model %>% evaluate(
+  x_train, y_train, verbose = 0
+)
+scores2_test <- model %>% evaluate(
+  x_test, y_test, verbose = 0
+)
+scores2_test
+scores2_train
+
+```
+# Model 3 
+Set a different filters number for convolution layers from model 1.  
+For each convolution layer, filters=64, kernal size=c(2,2), and for each dense layer, units=128
+```{r, eval=FALSE}
+model<- keras_model_sequential()
+model %>%
+  layer_conv_2d(filters = 64, kernel_size = c(2,2),
+                input_shape = c(28, 28, 1),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 64, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 64, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_flatten() %>%
+  layer_dense(units = 128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dense(units = 128) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 26) %>%
+  layer_activation(activation = "softmax")
+
+model %>% compile(loss = 'categorical_crossentropy',
+                  optimizer = optimizer_rmsprop(),
+                  metrics = c('accuracy'))
+
+history3 <- model %>%
+  fit(x_train, y_train, epochs = 2,
+      batch_size = batch_size,
+      validation_split = 0.2)
+
+scores3_train <- model %>% evaluate(
+  x_train, y_train, verbose = 0
+)
+scores3_test <- model %>% evaluate(
+  x_test, y_test, verbose = 0
+)
+scores3_test
+scores3_train
+
+```
+
+# Model 4 
+Set a different unitA number for dense layers from model 1.  
+For each convolution layer, filters=32, kernal size=c(2,2), and for each dense layer, units=256.
+```{r, eval=FALSE}
+model<- keras_model_sequential()
+model %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                input_shape = c(28, 28, 1),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_conv_2d(filters = 32, kernel_size = c(2,2),
+                padding = "same") %>%
+  layer_activation(activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_flatten() %>%
+  layer_dense(units = 256) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dense(units = 256) %>%
+  layer_activation(activation = "relu") %>%
+  layer_dropout(rate = 0.5) %>%
+  layer_dense(units = 26) %>%
+  layer_activation(activation = "softmax")
+
+model %>% compile(loss = 'categorical_crossentropy',
+                  optimizer = optimizer_rmsprop(),
+                  metrics = c('accuracy'))
+
+history4 <- model %>%
+  fit(x_train, y_train, epochs = 2,
+      batch_size = batch_size,
+      validation_split = 0.2)
+
+scores4_train <- model %>% evaluate(
+  x_train, y_train, verbose = 0
+)
+scores4_test <- model %>% evaluate(
+  x_test, y_test, verbose = 0
+)
+scores4_test
+scores4_train
+
+```
+The train accuracy and test accuracy for 4 models:
+```{r,echo=FALSE}
+r1<-c(0.9077244, 0.9045673)
+r2<-c( 0.923774, 0.9189904)
+r3<-c( 0.922956, 0.9187019)
+r4<-c( 0.9225401, 0.9182692)
+rr<-rbind(r1,r2,r3,r4)
+colnames(rr)<-c("train accuracy","test accuracy")
+rownames(rr)<-c("Model 1","Model 2","Model 3","Model 4")
+rr
+```
+Increasing the kernal size, filters number in convolution layers and units number in dense layers can increase the training and testing accuracy rate.  
+
+## Question 3 
+```{r}
+# Create list of weights to describe a dense neural network.
+#
+# Args:
+#     sizes: A vector giving the size of each layer, including
+#             the input and output layers.
+#
+# Returns:
+#     A list containing initialized weights and biases.
+casl_nn_make_weights <-
+function(sizes)
+{
+  L <- length(sizes) - 1L
+  weights <- vector("list", L)
+  for (j in seq_len(L))
+  {
+    w <- matrix(rnorm(sizes[j] * sizes[j + 1L]),
+                ncol = sizes[j],
+                nrow = sizes[j + 1L])
+    weights[[j]] <- list(w=w,
+                         b=rnorm(sizes[j + 1L]))
+  }
+  weights }
+
+# Apply a rectified linear unit (ReLU) to a vector/matrix.
+#
+# Args:
+#     v: A numeric vector or matrix.
+#
+# Returns:#     The original input with negative values truncated to zero.
+casl_util_ReLU <-
+  function(v)
+  {
+    v[v < 0] <- 0
+    v }
+
+# Apply derivative of the rectified linear unit (ReLU).
+#
+# Args:
+#     v: A numeric vector or matrix.
+#
+# Returns:
+#     Sets positive values to 1 and negative values to zero.
+casl_util_ReLU_p <-
+  function(v)
+  {
+    p <- v * 0
+    p[v > 0] <- 1
+    p
+  }
+
+```
+Derivative of two kinds of loss function: MAD and MSE
+```{r}
+# Derivative of the mean absolute deviation (MAD) function.
+#
+# Args:
+#     y: A numeric vector of responses.
+#     a: A numeric vector of predicted responses.
+#
+# Returns:
+#     Returned current derivative the MAD function.
+casl_util_mad_p <-
+  function(y, a)
+  { if (y>a)  -1 
+    else 1
+     }
+# Derivative of the mean squared error (MSE) function.
+#
+# Args:
+#     y: A numeric vector of responses.
+#     a: A numeric vector of predicted responses.
+#
+# Returns:
+#     Returned current derivative the MSE function.
+casl_util_mse_p <-
+  function(y, a)
+  {
+    (a - y) }
+
+```
+
+```{r}
+
+# Apply forward propagation to a set of NN weights and biases.
+#
+# Args:
+#     x: A numeric vector representing one row of the input.
+#     weights: A list created by casl_nn_make_weights.
+#     sigma: The activation function.
+#
+# Returns:
+#     A list containing the new weighted responses (z) and
+#     activations (a).
+casl_nn_forward_prop <-
+  function(x, weights, sigma)
+  {
+    L <- length(weights)
+    z <- vector("list", L)
+    a <- vector("list", L)
+    for (j in seq_len(L))
+    {
+      a_j1 <- if(j == 1) x else a[[j - 1L]]
+      z[[j]] <- weights[[j]]$w %*% a_j1 + weights[[j]]$b
+      a[[j]] <- if (j != L) sigma(z[[j]]) else z[[j]]
+    }
+    list(z=z, a=a)
+  }
+
+# Apply backward propagation algorithm.
+#
+# Args:
+#     x: A numeric vector representing one row of the input.
+#     y: A numeric vector representing one row of the response.
+#     weights: A list created by casl_nn_make_weights.
+#     f_obj: Output of the function casl_nn_forward_prop.
+#     sigma_p: Derivative of the activation function.
+#     f_p: Derivative of the loss function.
+#
+# Returns:
+#     A list containing the new weighted responses (z) and
+#     activations (a).
+casl_nn_backward_prop <-
+  function(x, y, weights, f_obj, sigma_p, f_p)
+  {
+    z <- f_obj$z; a <- f_obj$a
+    L <- length(weights)
+    grad_z <- vector("list", L)
+    grad_w <- vector("list", L)
+    for (j in rev(seq_len(L)))
+    {
+      if (j == L) {
+        grad_z[[j]] <- f_p(y, a[[j]])
+      } else {
+        grad_z[[j]] <- (t(weights[[j + 1]]$w) %*%
+                          grad_z[[j + 1]]) * sigma_p(z[[j]])
+      }
+      a_j1 <- if(j == 1) x else a[[j - 1L]]
+      grad_w[[j]] <- grad_z[[j]] %*% t(a_j1)
+    }
+    list(grad_z=grad_z, grad_w=grad_w)
+  }
+```
+
+Two kinds of SGD functions:
+```{r}
+# Apply stochastic gradient descent (SGD) to estimate NN
+#
+# Args:
+#     X: A numeric data matrix.
+#     y: A numeric vector of responses.
+#     sizes: A numeric vector giving the sizes of layers in
+#            the neural network.
+#     epochs: Integer number of epochs to computer.
+#     eta: Positive numeric learning rate.
+#     weights: Optional list of starting weights.
+#
+# Returns:
+#     A list containing the trained weights for the network.
+
+casl_nn_sgd_mse <-
+  function(X, y, sizes, epochs, eta, weights=NULL)
+  {
+    if (is.null(weights))
+    {
+      weights <- casl_nn_make_weights(sizes)
+    }
+    for (epoch in seq_len(epochs))
+    {
+      for (i in seq_len(nrow(X)))
+      {
+        f_obj <- casl_nn_forward_prop(X[i,], weights,
+                                      casl_util_ReLU)
+        b_obj <- casl_nn_backward_prop(X[i,], y[i,], weights,
+                                       f_obj, casl_util_ReLU_p,
+                                       casl_util_mse_p)
+        for (j in seq_along(b_obj))
+        {
+          weights[[j]]$b <- weights[[j]]$b -
+            eta * b_obj$grad_z[[j]]
+          weights[[j]]$w <- weights[[j]]$w -
+            eta * b_obj$grad_w[[j]]
+        }
+      } }
+    weights 
+    }
+
+casl_nn_sgd_mad <-
+  function(X, y, sizes, epochs, eta, weights=NULL)
+  {
+    if (is.null(weights))
+    {
+      weights <- casl_nn_make_weights(sizes)
+    }
+    for (epoch in seq_len(epochs))
+    {
+      for (i in seq_len(nrow(X)))
+      {
+        f_obj <- casl_nn_forward_prop(X[i,], weights,
+                                      casl_util_ReLU)
+        b_obj <- casl_nn_backward_prop(X[i,], y[i,], weights,
+                                       f_obj, casl_util_ReLU_p,
+                                       casl_util_mad_p)
+        for (j in seq_along(b_obj))
+        {
+          weights[[j]]$b <- weights[[j]]$b -
+            eta * b_obj$grad_z[[j]]
+          weights[[j]]$w <- weights[[j]]$w -
+            eta * b_obj$grad_w[[j]]
+        }
+      } }
+    weights 
+    }
+
+# Predict values from a training neural network.
+#
+# Args:
+#     weights: List of weights describing the neural network.
+#     X_test: A numeric data matrix for the predictions.
+#
+# Returns:
+#     A matrix of predicted values.
+casl_nn_predict <-
+  function(weights, X_test)
+  {
+    p <- length(weights[[length(weights)]]$b)
+    y_hat <- matrix(0, ncol = p, nrow = nrow(X_test))
+    for (i in seq_len(nrow(X_test)))
+    {
+      a <- casl_nn_forward_prop(X_test[i,], weights,
+                                casl_util_ReLU)$a
+      y_hat[i, ] <- a[[length(a)]]
+    }
+    y_hat }
+```
+Data simulation:
+```{r,eval=FALSE}
+set.seed(666)
+# without outliers
+X <- matrix(runif(500, min=-1, max=1), ncol=1)
+y <- 2+X[,1,drop = FALSE]^2 + rnorm(500, sd = 0.1)
+weights1<-casl_nn_sgd_mse(X, y, sizes=c(1, 25, 1), epochs=25, eta=0.01)
+weights2<-casl_nn_sgd_mad(X, y, sizes=c(1, 25, 1),epochs=25, eta=0.01)
+y_pred_mse <- casl_nn_predict(weights1, X)
+y_pred_mad <- casl_nn_predict(weights2, X)
+plot(X,y, pch=20,ylim=c(-2,4), main="without outliers")
+points(X,y_pred_mse,col="red",pch=20)
+points(X,y_pred_mad,col="blue",pch=20)
+legend()
+```
+
+```{r,eval=FALSE}
+# with outliers
+
+X <- matrix(runif(500, min=-1, max=1), ncol=1)
+y <- 2+X[,1,drop = FALSE]^2 + rnorm(500, sd = 0.1)
+y[sample(1:500, 10)]<- rnorm(10, sd = 1)
+weights1 <- casl_nn_sgd_mse(X, y, sizes=c(1, 25, 1),
+                       epochs=25, eta=0.01)
+weights2 <- casl_nn_sgd_mad(X, y, sizes=c(1, 25, 1),
+                            epochs=25, eta=0.01)
+y_pred_mse <- casl_nn_predict(weights1, X)
+y_pred_mad <- casl_nn_predict(weights2, X)
+
+plot(X,y, pch=20,ylim=c(-2,4))
+points(X,y_pred_mse,col="red",pch=20)
+points(X,y_pred_mad,col="blue",pch=20)
+```
